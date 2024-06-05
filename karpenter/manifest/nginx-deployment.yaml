@@ -1,17 +1,42 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: spot-nginx-deployment
 spec:
   selector:
     matchLabels:
       app: nginx
-  replicas: 1 # tells deployment to run 2 pods matching the template
+  replicas: 0
   template:
     metadata:
       labels:
         app: nginx
     spec:
+      nodeSelector:
+        capacity-type: spot
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: on-demand-nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      nodeSelector:
+        capacity-type: on-demand
       containers:
       - name: nginx
         image: nginx:1.14.2

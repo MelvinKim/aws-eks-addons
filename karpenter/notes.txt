@@ -1,0 +1,71 @@
+helm show values argo/argo-cd --version 3.35.4
+helm status argocd -n argocd
+helm list --pending -A --> to get failed chart installs
+
+- EKS Read Only Policy
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Action": [
+				"eks:ListAccessEntries",
+				"eks:ListAccessPolicies",
+				"eks:ListAddons",
+				"eks:ListAssociatedAccessPolicies",
+				"eks:ListClusters",
+				"eks:ListEksAnywhereSubscriptions",
+				"eks:ListFargateProfiles",
+				"eks:ListIdentityProviderConfigs",
+				"eks:ListInsights",
+				"eks:ListNodegroups",
+				"eks:ListPodIdentityAssociations",
+				"eks:ListUpdates",
+				"eks:AccessKubernetesApi",
+				"eks:DescribeAccessEntry",
+				"eks:DescribeAddon",
+				"eks:DescribeAddonConfiguration",
+				"eks:DescribeAddonVersions",
+				"eks:DescribeCluster",
+				"eks:DescribeEksAnywhereSubscription",
+				"eks:DescribeFargateProfile",
+				"eks:DescribeIdentityProviderConfig",
+				"eks:DescribeInsight",
+				"eks:DescribeNodegroup",
+				"eks:DescribePodIdentityAssociation",
+				"eks:DescribeUpdate",
+				"eks:ListTagsForResource"
+			],
+			"Effect": "Allow",
+			"Resource": "*"
+		}
+	]
+}
+
+- EKS dev group policy
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Action": [
+				"sts:AssumeRole"
+			],
+			"Effect": "Allow",
+			"Resource": "arn:aws:iam::<account-id>:role/eks-dev-role",
+			"Sid": "AllowAssumeOrganizationAccountRole"
+		},
+		{
+			"Action": [
+				"iam:GetRole",
+				"iam:PassRole"
+			],
+			"Condition": {
+				"StringEquals": {
+					"iam:PassedToService": "eks.amazonaws.com"
+				}
+			},
+			"Effect": "Allow",
+			"Resource": "arn:aws:iam::<account-id>:role/eks-dev-role",
+			"Sid": "AllowUserToPassDevRoleToEKSService"
+		}
+	]
+}
