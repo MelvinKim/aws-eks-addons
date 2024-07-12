@@ -1,0 +1,9 @@
+apiVersion: v2
+name: elasticsearch
+version: 21.3.1
+description: Elasticsearch is a distributed search and analytics engine.
+type: application
+dependencies:
+  - name: elasticsearch
+    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 21.3.1

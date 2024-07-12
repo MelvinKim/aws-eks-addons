@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kibana
+version: 11.2.11
+description: Kibana is an open source, browser based analytics and search dashboard for Elasticsearch.
+type: application
+dependencies:
+  - name: kibana
+    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 11.2.11
