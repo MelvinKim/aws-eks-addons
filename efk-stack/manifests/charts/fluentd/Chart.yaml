@@ -1,9 +1,0 @@
-apiVersion: v2
-name: fluentd
-version: 6.5.7
-description: Fluentd collects events from various data sources and writes them to files, RDBMS, NoSQL, IaaS, SaaS, Hadoop and so on.
-type: application
-dependencies:
-  - name: fluentd
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 6.5.7

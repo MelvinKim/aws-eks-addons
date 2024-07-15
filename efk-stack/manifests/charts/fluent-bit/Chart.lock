@@ -1,0 +1,6 @@
+dependencies:
+- name: fluent-bit
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.3.9
+digest: sha256:cfa3d53b024e242952f66c14e1427ab36315f8ddf3f8daca2e8911d296cd31c5
+generated: "2024-07-15T08:52:31.667819+03:00"

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: fluent-bit
+version: 2.3.9
+description: Fluent Bit is a Fast and Lightweight Log Processor and Forwarder. It has been made with a strong focus on performance to allow the collection of events from different sources without complexity.
+type: application
+dependencies:
+  - name: fluent-bit
+    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 2.3.9

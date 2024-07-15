@@ -1,6 +1,0 @@
-dependencies:
-- name: fluentd
-  repository: oci://registry-1.docker.io/bitnamicharts
-  version: 6.5.7
-digest: sha256:c1e32a2f7062597fe3784dec25973c98d55e1102b120f4c04f9152278387d440
-generated: "2024-07-12T09:06:31.581755+03:00"
