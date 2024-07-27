@@ -1,0 +1,222 @@
+apiVersion: v1
+data:
+  celery-container-logs.conf: |
+    [INPUT]
+        name              tail
+        path              /var/log/containers/*worker*.log
+        tag               celery_logs.*
+        read_from_head    true
+        multiline.parser  multiline-regex-celery
+        refresh_interval  10
+        db                /var/fluent-bit/state/celery_logs.db
+        mem_buf_limit     5MB
+
+    [FILTER]
+        name          lua
+        match         celery_logs.*
+        script        scripts.lua
+        call          regex_replace
+
+    [FILTER]
+        name                kubernetes
+        match               celery_logs.*
+        kube_url            https://kubernetes.default.svc:443
+        kube_tag_prefix     celery_logs.var.log.containers.
+        annotations         On
+        labels              On
+
+    [FILTER]
+        name          lua
+        match         celery_logs.*
+        script        scripts.lua
+        call          add_stream_name
+
+    [FILTER]
+        name          modify
+        match         celery_logs.*
+        remove        kubernetes
+
+    [OUTPUT]
+        name               cloudwatch
+        match              celery_logs.*
+        region             ${AWS_REGION}
+        log_group_name     ${CLUSTER_NAME}/container_logs
+        auto_create_group  true
+        extra_user_agent   container-insights
+        log_stream_name    $(stream_name)
+        log_key            log
+  flask-container-logs.conf: |
+    [INPUT]
+        name              tail
+        path              /var/log/containers/*flask*.log,/var/log/containers/*odoo*.log,/var/log/containers/*migration*.log,/var/log/containers/*scheduler*.log
+        exclude_path      ["/var/log/containers/koko-promo-engine-deployment*"]
+        tag               flask_logs.*
+        read_from_head    true
+        multiline.parser  multiline-regex-flask
+        refresh_interval  10
+        db                /var/fluent-bit/state/flask_logs.db
+        mem_buf_limit     5MB
+
+    [FILTER]
+        Name          lua
+        Match         flask_logs.*
+        script        scripts.lua
+        call          regex_replace
+
+    [FILTER]
+        name                kubernetes
+        match               flask_logs.*
+        kube_url            https://kubernetes.default.svc:443
+        kube_tag_prefix     flask_logs.var.log.containers.
+        annotations         On
+        labels              On
+
+    [FILTER]
+        name          lua
+        match         flask_logs.*
+        script        scripts.lua
+        call          add_stream_name
+
+    [FILTER]
+        name          modify
+        match         flask_logs.*
+        remove        kubernetes
+
+    [OUTPUT]
+        name               cloudwatch
+        match              flask_logs.*
+        region             ${AWS_REGION}
+        log_group_name     ${CLUSTER_NAME}/container_logs
+        auto_create_group  true
+        extra_user_agent   container-insights
+        log_stream_name    $(stream_name)
+        log_key            log
+  fluent-bit.conf: "[SERVICE]\n    flush        1\n    log_level    info\n    daemon
+    \      off\n    parsers_file parsers.conf\n    \n@INCLUDE flask-container-logs.conf\n@INCLUDE
+    celery-container-logs.conf\n@INCLUDE kpe-flask-container-logs.conf\n"
+  kpe-flask-container-logs.conf: |
+    [INPUT]
+        name              tail
+        path              /var/log/containers/koko-promo-engine-deployment*.log
+        tag               kpe_flask_logs.*
+        read_from_head    true
+        multiline.parser  multiline-regex-kpe-flask
+        refresh_interval  10
+        db                /var/fluent-bit/state/kpe_flask_logs.db
+        mem_buf_limit     5MB
+
+    [FILTER]
+        name          lua
+        match         kpe_flask_logs.*
+        script        scripts.lua
+        call          regex_replace
+
+    [FILTER]
+        name                kubernetes
+        match               kpe_flask_logs.*
+        kube_url            https://kubernetes.default.svc:443
+        kube_tag_prefix     kpe_flask_logs.var.log.containers.
+        annotations         On
+        labels              On
+
+    [FILTER]
+        name          lua
+        match         kpe_flask_logs.*
+        script        scripts.lua
+        call          add_stream_name
+
+    [FILTER]
+        name          modify
+        match         kpe_flask_logs.*
+        remove        kubernetes
+
+    [OUTPUT]
+        name               cloudwatch
+        match              kpe_flask_logs.*
+        region             ${AWS_REGION}
+        log_group_name     ${CLUSTER_NAME}/container_logs
+        auto_create_group  true
+        extra_user_agent   container-insights
+        log_stream_name    $(stream_name)
+        log_key            log
+  parsers.conf: |
+    [MULTILINE_PARSER]
+        name          multiline-regex-celery
+        type          regex
+        flush_timeout 1000
+        #
+        # Regex rules for multiline parsing
+        # ---------------------------------
+        #
+        # configuration hints:
+        #
+        #  - first state always has the name: start_state
+        #  - every field in the rule must be inside double quotes
+        #
+        # rules |   state name  | regex pattern                  | next state
+        # ------|---------------|--------------------------------------------
+        rule      "start_state"   "/(^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z (stdout|stderr) F \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}[\]:] (INFO|WARNING|ERROR|DEBUG)(\/[A-Za-z0-9-]+\])? .*$|^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z (stdout|stderr) F {$)/"  "cont"
+        rule      "cont"          "/^(?![^\n]*\[[0-9-:, ]+(INFO|WARNING|ERROR|DEBUG)(\/[A-Za-z0-9-]+\])|(?!.*(?:message|data)).*\{$).*$/"                           "cont"
+
+    [MULTILINE_PARSER]
+        name          multiline-regex-flask
+        type          regex
+        flush_timeout 1000
+        #
+        # Regex rules for multiline parsing
+        # ---------------------------------
+        #
+        # configuration hints:
+        #
+        #  - first state always has the name: start_state
+        #  - every field in the rule must be inside double quotes
+        #
+        # rules |   state name  | regex pattern                  | next state
+        # ------|---------------|--------------------------------------------
+        rule      "start_state"   "/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z (stdout|stderr) F {$/"  "cont"
+        rule      "cont"          "/^(?:(?!{$).)*$/"                                                   "cont"
+
+    [MULTILINE_PARSER]
+        name          multiline-regex-kpe-flask
+        type          regex
+        flush_timeout 1000
+        #
+        # Regex rules for multiline parsing
+        # ---------------------------------
+        #
+        # configuration hints:
+        #
+        #  - first state always has the name: start_state
+        #  - every field in the rule must be inside double quotes
+        #
+        # rules |   state name  | regex pattern                  | next state
+        # ------|---------------|--------------------------------------------
+        rule      "start_state"   "/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z (stdout|stderr) F \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}\] (INFO|WARNING|ERROR|DEBUG).*$/"  "cont"
+        rule      "cont"          "/^(?:(?!\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}\] (INFO|WARNING|ERROR|DEBUG)).)*$/"  "cont"
+  scripts.lua: "function regex_replace(tag, timestamp, record)\n    local message
+    = record[\"log\"]\n    message = string.gsub(message, '(%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d%.%d+Z
+    stdout F ?)', '')\n    message = string.gsub(message, '(%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%d%.%d+Z
+    stderr F ?)', '')\n    message = string.gsub(message, '\"Traceback', '\"Traceback
+    (most recent call last):\"\\n}\\nTraceback')\n\n    message = string.gsub(message,
+    '\\\\\\\"', '\"')\n    message = string.gsub(message, '\"{', '{')\n    message
+    = string.gsub(message, '}\"', '}')\n    \n    record[\"log\"] = message\n    return
+    1, timestamp, record\nend\n\nfunction add_stream_name(tag, timestamp, record)\n
+    \   local namespace = record[\"kubernetes\"][\"namespace_name\"]\n    local container
+    = record[\"kubernetes\"][\"container_name\"]\n    local serviceName = record[\"kubernetes\"][\"labels\"][\"serviceName\"]\n\n
+    \   if (serviceName == nil or serviceName == '') then\n        record[\"stream_name\"]
+    = namespace .. \"/\" .. container\n    else\n        record[\"stream_name\"] =
+    namespace .. \"/\" .. serviceName .. \"/\" .. container\n    end\n    \n    return
+    1, timestamp, record\nend\n"
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: aws-fluent-bit
+    meta.helm.sh/release-namespace: amazon-cloudwatch
+  creationTimestamp: "2023-12-08T11:20:55Z"
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    k8s-app: fluent-bit-compatible
+  name: fluent-bit-config
+  namespace: amazon-cloudwatch
+  resourceVersion: "1716"
+  uid: 660deefa-3b0b-4fae-a714-719b15a2b679
