@@ -1,0 +1,27 @@
+version: "3.7"
+
+services:
+  grafana:
+    image: grafana/grafana
+    ports:
+      - target: 3000
+        published: 3000
+    volumes:
+      - grafana-storage:/var/lib/grafana
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - target: 9090
+        published: 9090
+    volumes:
+      - type: bind
+        source: ./prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+  web-app:
+    image: melvinkimathi/flask-slis-using-prometheus-client:0.0.2
+    ports:
+      - target: 5000
+        published: 5000
+
+volumes:
+  grafana-storage: {}
